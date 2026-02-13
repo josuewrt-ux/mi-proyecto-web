@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Gestor Tareas Colaborativo</title>
+
+    <!-- PWA / Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0366d6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tareas">
+    <meta name="application-name" content="Gestor Tareas">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="msapplication-TileColor" content="#0366d6">
+    <meta name="msapplication-TileImage" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230366d6'/%3E%3Ctext x='50' y='70' font-size='70' text-anchor='middle' fill='white'%3E✓%3C/text%3E%3C/svg%3E">
+
+    <!-- iOS specific -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230366d6'/%3E%3Ctext x='50' y='70' font-size='70' text-anchor='middle' fill='white'%3E✓%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" sizes="152x152" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230366d6'/%3E%3Ctext x='50' y='70' font-size='70' text-anchor='middle' fill='white'%3E✓%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230366d6'/%3E%3Ctext x='50' y='70' font-size='70' text-anchor='middle' fill='white'%3E✓%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" sizes="167x167" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230366d6'/%3E%3Ctext x='50' y='70' font-size='70' text-anchor='middle' fill='white'%3E✓%3C/text%3E%3C/svg%3E">
+    
+    <!-- Firebase SDKs (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    
+    <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <!-- FullCalendar para vista calendario -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    
+    <!-- QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    
+    <!-- PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/pwa.css">
+    <style>
+        /* Loader de inicialización */
+        #app-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            transition: opacity 0.3s;
+        }
+        body.dark-mode #app-loader {
+            background: #0d1117;
+        }
+        .loader-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0366d6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        body.dark-mode .loader-spinner {
+            border-color: #30363d;
+            border-top-color: #58a6ff;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Accesibilidad */
+        :focus-visible {
+            outline: 2px solid #0366d6;
+            outline-offset: 2px;
+        }
+        body.dark-mode :focus-visible {
+            outline-color: #58a6ff;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loader -->
+    <div id="app-loader">
+        <div style="text-align: center;">
+            <div class="loader-spinner"></div>
+            <p style="margin-top: 20px; color: #0366d6;">Cargando aplicación...</p>
+        </div>
+    </div>
+
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 16px;">📊 Gestor Tareas</h2>
+                <button class="btn-dark-mode" id="btnDarkMode" aria-label="Cambiar modo oscuro">🌙</button>
+            </div>
+
+            <!-- Vistas personalizadas -->
+            <div class="sidebar-section">
+                <h3>📌 Mis vistas</h3>
+                <div id="vistas-guardadas-container"></div>
+                <button onclick="guardarVistaPersonalizada()" 
+                        style="width: 100%; margin-top: 8px; padding: 8px; background: none; border: 1px dashed #e1e4e8; border-radius: 6px; cursor: pointer;">
+                    + Guardar vista actual
+                </button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>📥 Bandeja de entrada</h3>
+            </div>
+            <div class="sidebar-section">
+                <h3>Respuestas</h3>
+                <ul>
+                    <li>💬 Comentarios asignados <span class="count" id="count-comentarios">0</span></li>
+                    <li>✅ Mis tareas <span class="count" id="count-mis-tareas">0</span></li>
+                    <li>📋 Más</li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>⭐ Favoritos</h3>
+                <p style="font-size: 12px; color: #586069;">Haz clic en ★ para agregar favoritos</p>
+            </div>
+            <div class="sidebar-section">
+                <h3>Espacios</h3>
+                <div class="proyecto-item" onclick="filtrarPorProyecto('todos')">
+                    <span>📊 Todas las tareas</span>
+                </div>
+                <div class="proyecto-item">
+                    <span>👥 Espacio del equipo</span>
+                    <span style="color: #0366d6;">+</span>
+                </div>
+                <div style="margin-top: 16px;">
+                    <p style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">Proyectos</p>
+                    <ul style="list-style: none;" id="lista-proyectos">
+                        <li class="proyecto-item" onclick="filtrarPorProyecto('Osinergmin')">📌 Osinergmin <span class="count" id="count-osinergmin">0</span></li>
+                        <li class="proyecto-item" onclick="filtrarPorProyecto('Chinalco')">🛡️ Chinalco <span class="count" id="count-chinalco">0</span></li>
+                        <li class="proyecto-item" onclick="filtrarPorProyecto('Contugas')">🔒 Contugas <span class="count" id="count-contugas">0</span></li>
+                    </ul>
+                </div>
+                <button style="width: 100%; margin-top: 16px; padding: 8px; background: none; border: 1px dashed #e1e4e8; border-radius: 6px; cursor: pointer;">+ Nuevo espacio</button>
+            </div>
+            <div class="sidebar-section">
+                <h3>Grupo: Estado</h3>
+                <div class="estado-item" onclick="filtrarPorEstado('COMPLETADO')">
+                    <span>✅ COMPLETADO</span>
+                    <span class="count" id="count-completado">0</span>
+                </div>
+                <div class="estado-item" onclick="filtrarPorEstado('EN ESPERA')">
+                    <span>⏳ EN ESPERA</span>
+                    <span class="count" id="count-espera">0</span>
+                </div>
+                <div class="estado-item" onclick="filtrarPorEstado('CANCELADO')">
+                    <span>❌ CANCELADO</span>
+                    <span class="count" id="count-cancelado">0</span>
+                </div>
+                <div class="estado-item" onclick="filtrarPorEstado('EN CURSO')">
+                    <span>🔄 EN CURSO</span>
+                    <span class="count" id="count-curso">0</span>
+                </div>
+                <div class="estado-item" onclick="filtrarPorEstado('PENDIENTE')">
+                    <span>📋 PENDIENTE</span>
+                    <span class="count" id="count-pendiente">0</span>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h3>👥 Usuarios</h3>
+                <div id="lista-usuarios"></div>
+            </div>
+        </aside>
+
+        <!-- Contenido principal -->
+        <main class="main">
+            <div class="login-info" id="loginInfo">
+                <span id="userDisplay">No has iniciado sesión</span>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-login" id="btnLogin" aria-label="Iniciar sesión">Iniciar sesión con Google</button>
+                </div>
+            </div>
+
+            <!-- Métricas rápidas -->
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #586069;">✅ Completadas</span>
+                        <span id="metric-completadas" style="font-size: 24px; font-weight: 600;">0</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #586069;">⏳ Pendientes</span>
+                        <span id="metric-pendientes" style="font-size: 24px; font-weight: 600;">0</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #586069;">⚠️ Vencen hoy</span>
+                        <span id="metric-vencen-hoy" style="font-size: 24px; font-weight: 600;">0</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #586069;">📊 Total</span>
+                        <span id="metric-total" style="font-size: 24px; font-weight: 600;">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico -->
+            <div class="grafico-container">
+                <canvas id="graficoEstados" aria-label="Gráfico de distribución de tareas por estado" role="img"></canvas>
+            </div>
+
+            <!-- Vistas tabs -->
+            <div class="vista-tabs" role="tablist">
+                <button class="vista-tab active" onclick="cambiarVista('tabla', event)" role="tab" aria-selected="true">📋 Tabla</button>
+                <button class="vista-tab" onclick="cambiarVista('kanban', event)" role="tab" aria-selected="false">📊 Kanban</button>
+                <button class="vista-tab" onclick="cambiarVista('calendario', event)" role="tab" aria-selected="false">📅 Calendario</button>
+            </div>
+
+            <!-- Filtros y Búsqueda -->
+            <div class="filtros">
+                <select id="filtroEstado" class="filtro-select" onchange="aplicarFiltros()" aria-label="Filtrar por estado">
+                    <option value="todos">📋 Todos los estados</option>
+                    <option value="PENDIENTE">⏳ Pendiente</option>
+                    <option value="EN CURSO">🔄 En curso</option>
+                    <option value="EN ESPERA">⏰ En espera</option>
+                    <option value="COMPLETADO">✅ Completado</option>
+                    <option value="CANCELADO">❌ Cancelado</option>
+                </select>
+                <select id="filtroProyecto" class="filtro-select" onchange="aplicarFiltros()" aria-label="Filtrar por proyecto">
+                    <option value="todos">📁 Todos los proyectos</option>
+                    <option value="Osinergmin">Osinergmin</option>
+                    <option value="Chinalco">Chinalco</option>
+                    <option value="Contugas">Contugas</option>
+                </select>
+                <select id="filtroEquipo" class="filtro-select" onchange="aplicarFiltros()" aria-label="Filtrar por equipo">
+                    <option value="todos">👥 Todos los equipos</option>
+                    <option value="SM">SM</option>
+                    <option value="Cliente/On">Cliente/On</option>
+                    <option value="SM/TAC">SM/TAC</option>
+                </select>
+                <select id="filtroAsignado" class="filtro-select" onchange="aplicarFiltros()" aria-label="Filtrar por asignado">
+                    <option value="todos">👤 Todos</option>
+                    <option value="yo">Asignados a mí</option>
+                </select>
+                <input type="text" id="buscador" class="filtro-buscar" 
+                       placeholder="🔍 Buscar tareas..." 
+                       onkeyup="buscarTareas()"
+                       aria-label="Buscar tareas">
+                <button class="btn-guardar-filtro" onclick="guardarVistaPersonalizada()" aria-label="Guardar vista actual">
+                    💾 Guardar vista
+                </button>
+            </div>
+
+            <!-- Vista Tabla -->
+            <div id="vistaTabla">
+                <div class="tareas-header">
+                    <h2>📋 TAREAS</h2>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn-exportar" onclick="exportarACSV()" aria-label="Exportar a CSV">
+                            📥 CSV
+                        </button>
+                        <button class="btn-exportar" onclick="exportarAPDF()" aria-label="Exportar a PDF">
+                            📄 PDF
+                        </button>
+                        <button class="btn-exportar" id="btnModoConcentracion" style="background: #6f42c1;" onclick="toggleModoConcentracion()" aria-label="Activar modo concentración">
+                            🧘 Concentración
+                        </button>
+                        <button class="btn-agregar" id="btnAgregarTarea" aria-label="Agregar nueva tarea">
+                            + Agregar Tarea
+                        </button>
+                    </div>
+                </div>
+
+                <table class="tabla-tareas" id="tabla-tareas">
+                    <thead>
+                        <tr>
+                            <th onclick="ordenarTabla('nombre')" tabindex="0" role="button" aria-label="Ordenar por nombre">📝 Nombre ⬆️⬇️</th>
+                            <th onclick="ordenarTabla('estado')" tabindex="0" role="button" aria-label="Ordenar por estado">⚡ Estado ⬆️⬇️</th>
+                            <th onclick="ordenarTabla('avance')" tabindex="0" role="button" aria-label="Ordenar por avance">📊 Avance ⬆️⬇️</th>
+                            <th onclick="ordenarTabla('equipo')" tabindex="0" role="button" aria-label="Ordenar por equipo">👥 Equipo ⬆️⬇️</th>
+                            <th onclick="ordenarTabla('asignado')" tabindex="0" role="button" aria-label="Ordenar por asignado">👤 Asignado ⬆️⬇️</th>
+                            <th onclick="ordenarTabla('fechaLimite')" tabindex="0" role="button" aria-label="Ordenar por fecha límite">📅 Fecha límite ⬆️⬇️</th>
+                            <th onclick="ordenarTabla('etapa')" tabindex="0" role="button" aria-label="Ordenar por etapa">🏷️ Etapa ⬆️⬇️</th>
+                            <th>🏷️ Tags</th>
+                            <th>Creado por</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body">
+                        <tr><td colspan="10" style="text-align: center; padding: 40px;">Cargando tareas...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Vista Kanban -->
+            <div id="vistaKanban" style="display: none;">
+                <div class="tareas-header">
+                    <h2>📊 KANBAN</h2>
+                </div>
+                <div class="kanban-container" id="kanban-container"></div>
+            </div>
+
+            <!-- VISTA CALENDARIO -->
+            <div id="vistaCalendario" style="display: none;">
+                <div class="tareas-header">
+                    <h2>📅 CALENDARIO</h2>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn-exportar" onclick="exportarAPDF()" aria-label="Exportar calendario a PDF">
+                            📄 Exportar
+                        </button>
+                    </div>
+                </div>
+                <div id="calendario" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL DE TAREAS -->
+    <div class="modal" id="modalTarea" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content" style="width: 700px; max-width: 95%;">
+            <h3 id="modalTitle" style="margin-bottom: 20px; font-size: 20px;">Agregar nueva tarea</h3>
+            <form id="formTarea">
+                <div class="form-group">
+                    <label for="tareaNombre">Nombre de la tarea</label>
+                    <input type="text" id="tareaNombre" required>
+                    <div id="nombre-error" class="error-message"></div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label for="tareaEstado">Estado</label>
+                        <select id="tareaEstado">
+                            <option value="PENDIENTE">📋 PENDIENTE</option>
+                            <option value="EN CURSO">🔄 EN CURSO</option>
+                            <option value="EN ESPERA">⏳ EN ESPERA</option>
+                            <option value="COMPLETADO">✅ COMPLETADO</option>
+                            <option value="CANCELADO">❌ CANCELADO</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tareaAvance">Avance (%)</label>
+                        <input type="number" id="tareaAvance" min="0" max="100" value="0">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label for="tareaEquipo">Equipo</label>
+                        <input type="text" id="tareaEquipo" placeholder="Ej: SM, Cliente/On, SM/TAC">
+                    </div>
+                    <div class="form-group">
+                        <label for="tareaAsignado">Asignar a</label>
+                        <select id="tareaAsignado">
+                            <option value="no asignado">No asignado</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label for="tareaProyecto">Proyecto</label>
+                        <select id="tareaProyecto">
+                            <option value="Osinergmin">Osinergmin</option>
+                            <option value="Chinalco">Chinalco</option>
+                            <option value="Contugas">Contugas</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tareaEtapa">Etapa</label>
+                        <select id="tareaEtapa">
+                            <option value="OP">OP</option>
+                            <option value="IMP">IMP</option>
+                            <option value="DP">DP</option>
+                            <option value="TEST">TEST</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tareaFecha">Fecha límite</label>
+                    <input type="date" id="tareaFecha">
+                </div>
+
+                <!-- TAGS -->
+                <div style="margin-bottom: 20px; border-top: 1px solid #eaecef; padding-top: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600; font-size: 14px;">🏷️ Etiquetas</label>
+                    <div id="tags-container-modal" style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="nuevoTag" placeholder="Nueva etiqueta..." style="flex: 1; padding: 8px 12px; border: 1px solid #e1e4e8; border-radius: 6px;">
+                        <button type="button" onclick="agregarTag()" class="btn-subir" style="background: #6f42c1;">➕ Agregar</button>
+                    </div>
+                </div>
+
+                <!-- SUBTAREAS -->
+                <div style="margin-bottom: 20px; border-top: 1px solid #eaecef; padding-top: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600; font-size: 14px;">
+                        📋 Subtareas <span style="font-weight: normal; color: #586069; font-size: 12px;">(el avance se calcula automáticamente)</span>
+                    </label>
+                    <div id="subtareas-container-modal" style="margin-bottom: 16px; max-height: 250px; overflow-y: auto; background: #f6f8fa; border-radius: 8px; padding: 8px;"></div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="nuevaSubtarea" 
+                               placeholder="Escribe una subtarea..." 
+                               style="flex: 1; padding: 10px 12px; border: 1px solid #e1e4e8; border-radius: 8px; font-size: 14px;">
+                        <button type="button" onclick="agregarSubtarea()" 
+                                style="background: #6f42c1; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            ➕ Agregar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- COMENTARIOS -->
+                <div style="margin-bottom: 20px; border-top: 1px solid #eaecef; padding-top: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600; font-size: 14px;">💬 Comentarios</label>
+                    <div id="lista-comentarios-modal" style="max-height: 150px; overflow-y: auto; margin-bottom: 8px; background: #f6f8fa; border-radius: 8px; padding: 8px;"></div>
+                    <textarea id="nuevoComentario" rows="2" placeholder="Escribe un comentario..." style="width: 100%; padding: 10px 12px; border: 1px solid #e1e4e8; border-radius: 8px; font-size: 14px;"></textarea>
+                    <button type="button" class="btn-subir" style="margin-top: 8px; width: 100%;" onclick="agregarComentario()">➕ Agregar comentario</button>
+                </div>
+
+                <!-- ARCHIVOS -->
+                <div style="margin-bottom: 20px; border-top: 1px solid #eaecef; padding-top: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600; font-size: 14px;">📎 Archivos adjuntos</label>
+                    <div id="dropZone" 
+                         class="dropzone" 
+                         ondragover="handleDragOver(event)" 
+                         ondragenter="handleDragEnter(event)" 
+                         ondragleave="handleDragLeave(event)" 
+                         ondrop="handleDrop(event)"
+                         onclick="document.getElementById('archivoAdjunto').click()"
+                         style="border: 2px dashed #0366d6; border-radius: 12px; padding: 30px; text-align: center; background: #f6f8fa; transition: all 0.3s; cursor: pointer; margin-bottom: 16px;">
+                        <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: #0366d6; margin-bottom: 12px;">
+                            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                        </svg>
+                        <p style="margin: 0; font-size: 16px; font-weight: 500;">Arrastra archivos aquí o haz clic para seleccionar</p>
+                        <p style="margin: 4px 0 0; font-size: 12px; color: #586069;">PDF, imágenes, Word, Excel, etc.</p>
+                    </div>
+                    <div id="lista-archivos-modal" style="margin-bottom: 16px;"></div>
+                    <div id="progresoSubida" class="progreso-container" style="display: none; margin-bottom: 12px;">
+                        <div class="progreso-bar">
+                            <div class="progreso-track">
+                                <div id="barraProgreso" class="progreso-fill"></div>
+                            </div>
+                            <span id="textoProgreso" class="progreso-text">0%</span>
+                        </div>
+                    </div>
+                    <input type="file" id="archivoAdjunto" style="display: none;" onchange="subirArchivo(event)">
+                    <button type="button" class="btn-subir" style="width: 100%;" onclick="document.getElementById('archivoAdjunto').click()">
+                        📎 Seleccionar archivo
+                    </button>
+                </div>
+
+                <!-- QR -->
+                <div style="margin-bottom: 20px; border-top: 1px solid #eaecef; padding-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="font-weight: 600; font-size: 14px;">📱 Compartir tarea</label>
+                        <button type="button" onclick="generarQRTarea()" class="btn-subir">
+                            Generar QR
+                        </button>
+                    </div>
+                    <div id="qr-container-modal" class="qr-container" style="display: flex; justify-content: center; padding: 20px; background: white; border-radius: 12px; margin-top: 16px;"></div>
+                </div>
+
+                <!-- HISTORIAL -->
+                <div style="margin-bottom: 20px; border-top: 1px solid #eaecef; padding-top: 20px;">
+                    <div id="historial-container-modal"></div>
+                </div>
+
+                <!-- Botones -->
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #eaecef; padding-top: 20px;">
+                    <button type="button" onclick="cerrarModal()" class="btn-cancelar">Cancelar</button>
+                    <button type="submit" id="btnGuardarTarea" class="btn-guardar">💾 Guardar tarea</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" role="alert" aria-live="polite"></div>
+
+    <!-- Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => {
+                    console.log('Service Worker no registrado:', err);
+                });
+            });
+        }
+
+        // Ocultar loader cuando la app esté lista
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('app-loader');
+                if (loader) loader.style.opacity = '0';
+                setTimeout(() => {
+                    if (loader) loader.style.display = 'none';
+                }, 300);
+            }, 800);
+        });
+
+        // Error handling global
+        window.addEventListener('error', function(e) {
+            console.error('Error global:', e.error);
+            if (typeof mostrarNotificacion === 'function') {
+                mostrarNotificacion('⚠️ Error en la aplicación', 'error');
+            }
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Promise rechazada:', e.reason);
+            if (typeof mostrarNotificacion === 'function') {
+                mostrarNotificacion('⚠️ Error inesperado', 'error');
+            }
+        });
+    </script>
+
+    <!-- JavaScript - ORDEN CORRECTO (SIN DUPLICADOS) -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/filters.js"></script>
+    <script src="js/kanban.js"></script>
+    <script src="js/comments.js"></script>
+    <script src="js/files.js"></script>
+    <script src="js/subtasks.js"></script>
+    <script src="js/calendario.js"></script>
+    <script src="js/historial.js"></script>
+    <script src="js/tags.js"></script>
+    <script src="js/vistas-personalizadas.js"></script>
+    <script src="js/modo-concentracion.js"></script>
+    <script src="js/pwa.js"></script>
+    <script src="js/qr.js"></script>
+    <!-- MAIN.JS ELIMINADO - NO DUPLICAR -->
+</body>
+</html>
