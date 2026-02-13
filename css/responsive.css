@@ -1,0 +1,116 @@
+/* ========== RESPONSIVE DESIGN ========== */
+@media (max-width: 1024px) {
+    .sidebar { width: 240px; }
+}
+
+@media (max-width: 768px) {
+    .app { flex-direction: column; }
+    
+    .sidebar { 
+        width: 100%; 
+        max-height: 300px; 
+        border-right: none; 
+        border-bottom: 1px solid #e1e4e8; 
+    }
+    
+    .main { padding: 16px; }
+    
+    .tabla-tareas { 
+        display: block; 
+        overflow-x: auto; 
+        white-space: nowrap;
+    }
+    
+    .filtros { flex-direction: column; }
+    
+    .filtro-select, 
+    .filtro-buscar { 
+        width: 100%; 
+    }
+    
+    .kanban-container { 
+        padding: 16px 0; 
+    }
+    
+    .kanban-columna { 
+        min-width: 280px; 
+    }
+    
+    .toast { 
+        max-width: calc(100vw - 40px); 
+    }
+    
+    .metric-grid { 
+        grid-template-columns: 1fr; 
+    }
+    
+    .tareas-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .btn-agregar,
+    .btn-exportar {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .main { padding: 12px; }
+    
+    .vista-tabs { 
+        justify-content: stretch; 
+    }
+    
+    .vista-tab { 
+        flex: 1; 
+        text-align: center; 
+    }
+    
+    .modal-content { 
+        padding: 16px; 
+    }
+    
+    .sidebar-section li,
+    .proyecto-item,
+    .estado-item {
+        font-size: 13px;
+    }
+    
+    .tareas-header h2 {
+        font-size: 18px;
+    }
+}
+
+/* Impresión */
+@media print {
+    .sidebar,
+    .filtros,
+    .vista-tabs,
+    .btn-agregar,
+    .btn-exportar,
+    .btn-eliminar,
+    .btn-dark-mode,
+    .login-info {
+        display: none !important;
+    }
+    
+    .app {
+        display: block;
+        height: auto;
+    }
+    
+    .main {
+        padding: 0;
+        background: white;
+    }
+    
+    .tabla-tareas {
+        box-shadow: none;
+    }
+    
+    .tabla-tareas th {
+        background: #f6f8fa !important;
+        color: black !important;
+    }
+}
